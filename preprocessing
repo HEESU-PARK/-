@@ -1,0 +1,80 @@
+```python
+from konlpy.tag import Kkma
+from konlpy.tag import Okt
+import openpyxl
+kkma = Kkma()
+okt = Okt()
+
+import sys
+import os
+import re
+
+def preprocessing(review):
+    #기존 코드 name : 식당 이름 + 주소
+    #이름이랑 주소를 키워드 추출에서 빼기 위해서 문장에서 삭제하는 작업 수행
+    #'프랑스 파리' 이런 식으로 입력하거나, name을 지우고 코드 돌렸음
+    total_review = ''
+
+    #인풋리뷰
+    #리뷰 문장을 단위로 split 했음 (블로그 줄바꿈을 '. '로 없애서 저장해서 구분자 '. 'dla)
+    review = review.split('\n')
+
+    pre_sent = '' #문장 단위 전처리 내용 담는 변수
+
+    for idx in range(len(review)):
+        r = review[idx]
+        #하나의 리뷰에서 문장 단위로 자르기
+
+        #name 지울거면 여기서 지우고, name 한 단어면 첫번째거만 하든지 해줘야함
+        #name 지우면 sentence = r 추가
+        #sentence = re.sub(name.split(' ')[0],'',r)
+        #sentence = re.sub(name.split(' ')[1],'',sentence)
+
+        sentence = r
+        #불용어 제거
+        sentence = re.sub('\n','',sentence)
+        sentence = re.sub('\u200b','',sentence)
+        sentence = re.sub('\xa0','',sentence)
+        sentence = re.sub('([a-zA-Z])','',sentence)
+        sentence = re.sub('[ㄱ-ㅎㅏ-ㅣ]+','',sentence)
+        sentence = re.sub('[-=+,#/\?:^$.@*\"※~&%ㆍ!』\\‘|\(\)\[\]\<\>`\'…》?\"]','',sentence)
+
+        if len(sentence) == 0:
+            continue
+        pre_sent += (sentence + ' ')
+        #단어 추출
+        sentence = okt.pos(sentence, stem = True) #품사
+        word = []
+
+        for i in sentence:
+            if not i[1] == 'Noun':
+                continue
+            if len(i[0]) == 1:
+                continue
+            word.append(i[0])
+        word = ' '.join(word)
+        word += '. '
+        total_review += word
+    return pre_sent, total_review
+
+#test
+import pandas as pd
+file = open("가이드.txt", "r", encoding='CP949')
+text = file.read()
+
+test_text, done = preprocessing(text)
+print('문장으로')
+print(test_text)
+print('단어로')
+print(done)
+
+# Workbook 생성
+wb = openpyxl.Workbook()
+
+# Sheet 활성
+sheet = wb.active
+sheet.append(["original","prep_s", "prep_w"])
+sheet.append([text,test_text,done])
+
+wb.save("가이드.csv")
+```
